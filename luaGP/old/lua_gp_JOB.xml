@@ -1,0 +1,37 @@
+<DataPreparation Lcid="String" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Job Name="LUA_GLOBAL_PLATFORM_TEST" Type="Normal" Priority="1">
+		<Comment>Version 1.00. Global Platform implementation for LUA</Comment>
+		<JobConfiguration xmlns:msxsl="urn:schemas-microsoft-com:xslt" xmlns:mces="http://muehlbauer.de/mces" xmlns:js="http://www.muehlbauer.de/functions">
+			<Module WSName="MachineControl" Nr="1" Active="Yes" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+				<ConfigData Name="Cards_InputMagazine" Format="Text">
+					<![CDATA[500]]>
+				</ConfigData>
+				<ConfigData Name="Cards_OutputMagazine" Format="Text">
+					<![CDATA[500]]>
+				</ConfigData>
+				<ConfigData Name="Reproduction" Format="Text">
+					<![CDATA[Off]]>
+				</ConfigData>
+			</Module>
+
+			<Module WSName="Coding_Standard" Nr="1" Active="Yes" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+				<ConfigData Name="DLL" Format="Text">LuaMuehlbauerDLL.dll</ConfigData>
+				<ConfigData Name="SecurityModule" Format="Text">Off</ConfigData>
+				<ConfigData Name="Download" Format="Text">Prozchip.bin</ConfigData>
+				<ConfigData Name="DownloadSign" Format="Text">RS PRZ</ConfigData>
+
+				<!-- Script -->
+				<ConfigDataEx ParamID="100" OrderParam="2" Format="String">C:\SCPComLib8.14\MCES_8.14\ChipCoding\Scripts\LuaGP\lua_gp_test.lua</ConfigDataEx>	
+
+				
+			</Module>
+		</JobConfiguration>
+
+		<Cards xmlns:msxsl="urn:schemas-microsoft-com:xslt" xmlns:mces="http://muehlbauer.de/mces" xmlns:js="http://www.muehlbauer.de/functions">
+			<Card></Card>
+			
+		</Cards>
+	</Job>
+</DataPreparation>
+
+
