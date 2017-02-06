@@ -1,4 +1,4 @@
---load all the module from the dll
+ --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_log")()
@@ -14,7 +14,7 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 
 local gp = require("lualib.gp_v1_4")
 
-log.open_logfile(".\\log\\GpAuthenticate_None.log")
+log.open_logfile(".\\log\\GpAuthenticate_CPS.log")
 
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
@@ -88,23 +88,24 @@ local pps = card.do_pps(0x11, 4910000)
   local apdu_mode = gp.APDU_MODE.CLR
 
 --Set key diversification
-  local key_div = gp.KEY_DIVERSIFY_MODE.NONE
+  local key_div = gp.KEY_DIVERSIFY_MODE.EMV
 
 --the SCP mode
   local scp_mode = gp.SCP_MODE.SCP_02_15
 
 --ISD
   local  CM_AID = "A000000003000000"
-
-  local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
-  
+ 
+   local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
+ ------------------------------------------------------------
+  --- Authenticate with the new keyset EMV
   ------------------------------------------------------------
-  --- Authenticate with GP 
-  ------------------------------------------------------------
+  -- select CM
   gp.select_applet(CM_AID, card)
+  -- initialize update
   gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+ -- external authenticate
   gp.external_authenticate()
-
 
   ------------------------------------------------------------
   --- Disconnect reader and close the log file

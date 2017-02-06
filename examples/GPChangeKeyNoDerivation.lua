@@ -14,7 +14,7 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 
 local gp = require("lualib.gp_v1_4")
 
-log.open_logfile(".\\log\\GpAuthenticate_None.log")
+log.open_logfile(".\\log\\GpChangeKeyNoDerivation.log")
 
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
@@ -88,7 +88,7 @@ local pps = card.do_pps(0x11, 4910000)
   local apdu_mode = gp.APDU_MODE.CLR
 
 --Set key diversification
-  local key_div = gp.KEY_DIVERSIFY_MODE.NONE
+  local key_div = gp.KEY_DIVERSIFY_MODE.EMV
 
 --the SCP mode
   local scp_mode = gp.SCP_MODE.SCP_02_15
@@ -97,15 +97,25 @@ local pps = card.do_pps(0x11, 4910000)
   local  CM_AID = "A000000003000000"
 
   local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
-  
+
   ------------------------------------------------------------
-  --- Authenticate with GP 
+  --- Authenticate with default GP key using diversified EMV/CPS
   ------------------------------------------------------------
+  -- select CM
   gp.select_applet(CM_AID, card)
+  -- initialize update
   gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  -- external authenticate
   gp.external_authenticate()
+  
+  -- put the default key set
+  normal_key.KEY_ID = 0x01
+  normal_key.KEY_VERSION = 0x01
+  
+  gp.put_keyset(normal_key)
 
-
+  -- run the GPAuthenticate_None.lua to verify the put key result
+  
   ------------------------------------------------------------
   --- Disconnect reader and close the log file
   ------------------------------------------------------------

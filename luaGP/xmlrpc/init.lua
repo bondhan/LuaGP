@@ -1,6 +1,4 @@
---package.path = "C:\\SCPComLib8.14\\MCES_8.14\\ChipCoding\\Scripts\\LuaGP\\?.lua;" .. package.path 
-package.path = "..\\?.lua;" .. package.path 
-
+package.path = ".\\LuaGP\\?.lua;" .. package.path 
 
 ---------------------------------------------------------------------
 -- XML-RPC implementation for Lua.

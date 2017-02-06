@@ -20,10 +20,10 @@ package.loadlib("LuaSmartCardLibrary.dll", "luaopen_socket_core")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_mime_core")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_lxp")()
 
---package.path = "C:\\SCPComLib8.14\\MCES_8.14\\ChipCoding\\Scripts\\LuaGP\\?.lua;" .. package.path 
-package.path = "D:\\GCC_WORK\\MUEHLBAUER\\templates\\Scripts\\LuaGP\\?.lua;" .. package.path 
+package.path = ".\\LuaGP\\?.lua;" .. package.path 
 
 local xlmrpc_lua = require("xmlrpc.http")
+local util = require("lualib.util")
 
 -----------------------------------------------------------------------------
 -- Please assign either to choose pcsc or muehlbauer
@@ -55,7 +55,7 @@ _M.CARD_KEY_VERSION = 0x00
 _M.C_MAC = bytes.new(8,"0000000000000000")
 
 local show_key_not_found = setmetatable({}, {__index = function (t, k)  -- {} an empty table, and after the comma, a custom function failsafe
-      return "key doesn't exist"
+      error("Key doesn't exist in the metatable list")
     end})
 
 
@@ -144,6 +144,7 @@ local function fillEmvStr(update_response, key_type)
   log.print(log.DEBUG, "diversification data EMV = " .. data)
   return data
 end
+
 
 -- Create/compose APDU command
 local function create_cmd_apdu(cla, ins, p1, p2, data)
@@ -435,7 +436,7 @@ end
 
 
 function _M.set_kmc(key_enc, key_mac, key_kek, key_version, key_id)
-  
+
   local key_set_table = {KEY_VERSION = 0x00, KEY_ID = 0x00, KEY_ENC = bytes.new(8,"404142434445464748494A4B4C4D4E4F"), KEY_MAC = bytes.new(8,"404142434445464748494A4B4C4D4E4F"), KEY_KEK = bytes.new(8,"404142434445464748494A4B4C4D4E4F")}
 
   if (key_version ~= nil) then
@@ -564,28 +565,28 @@ function _M.diversify_key_rpc(divers_mode, update_response, key_set)
 end
 
 
-
-
 function _M.diversify_key(divers_mode, update_response, key_set)
-  local diversified_key = key_set
+  local diversified_key = util.deepcopy(key_set)
   local divers_string = ""
+  local update_response_str = tostring(update_response)
 
   if divers_mode == _M.KEY_DIVERSIFY_MODE.NONE then
     log.print(log.DEBUG, "Not doing key diversification")
     return diversified_key
   end
 
-  local iv = bytes.new(8,"00 00 00 00 00 00 00 00")	
-
   for i=_M.KEY_TYPE.ENC,_M.KEY_TYPE.KEK do
 
     if divers_mode == _M.KEY_DIVERSIFY_MODE.VISA2 then
-      divers_string = fillVisa(update_response, i)
+      divers_string = fillVisaStr(update_response_str, i)
       --log.print(log.DEBUG, "i = " .. i)
     elseif divers_mode == _M.KEY_DIVERSIFY_MODE.EMV then
-      divers_string = fillEmv(update_response, i)	
+      divers_string = fillEmvStr(update_response_str, i)	
       --log.print(log.DEBUG, "i = " .. i)
     end	
+    
+    local iv = bytes.new(8,"00 00 00 00 00 00 00 00")	
+    local divers_bytes = bytes.new(8, divers_string)	
 
     local key
     if (i == _M.KEY_TYPE.ENC) then
@@ -598,19 +599,23 @@ function _M.diversify_key(divers_mode, update_response, key_set)
 
     local TDES_ECB = crypto.create_context(crypto.ALG_DES2_EDE_ECB, key)
 
-    if (i == _M.KEY_TYPE.KEY_ENC) then
-      diversified_key.ENC = crypto.encrypt(TDES_ECB, divers_string, iv)			
+    if (i == _M.KEY_TYPE.ENC) then
+      diversified_key.KEY_ENC = crypto.encrypt(TDES_ECB, divers_bytes, iv)			
       log.print(log.DEBUG, "Derived key ENC = " .. tostring(diversified_key.KEY_ENC))
-    elseif (i == _M.KEY_TYPE.KEY_MAC) then
-      diversified_key.KEY_MAC = crypto.encrypt(TDES_ECB, divers_string, iv)			
+    elseif (i == _M.KEY_TYPE.MAC) then
+      diversified_key.KEY_MAC = crypto.encrypt(TDES_ECB, divers_bytes, iv)			
       log.print(log.DEBUG, "Derived key MAC = " .. tostring(diversified_key.KEY_MAC))
-    elseif (i == _M.KEY_TYPE.KEY_KEK) then
-      diversified_key.KEY_KEK = crypto.encrypt(TDES_ECB, divers_string, iv)
+    elseif (i == _M.KEY_TYPE.KEK) then
+      diversified_key.KEY_KEK = crypto.encrypt(TDES_ECB, divers_bytes, iv)
       log.print(log.DEBUG, "Derived key KEK = " .. tostring(diversified_key.KEY_KEK))			
     end	
 
     iv = bytes.new(8,"00 00 00 00 00 00 00 00")			
   end	
+
+--  -- make it the same with the current one
+  diversified_key.KEY_VERSION =  CARD_KEY_VERSION
+  diversified_key.KEY_ID =  CARD_KEY_VERSION
 
   return diversified_key
 end
@@ -959,7 +964,7 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
   GP_APDU_MODE = apdu_mode
   GP_SCP_VERSION = scpMajorVersion
 
-  return response
+  return sw, response
 end
 
 

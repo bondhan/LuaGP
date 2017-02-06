@@ -14,7 +14,7 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 
 local gp = require("lualib.gp_v1_4")
 
-log.open_logfile(".\\log\\GpAuthenticate_None.log")
+log.open_logfile(".\\log\\GpChangeKeyCPSDerivation.log")
 
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
@@ -97,15 +97,31 @@ local pps = card.do_pps(0x11, 4910000)
   local  CM_AID = "A000000003000000"
 
   local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
-  
+
   ------------------------------------------------------------
-  --- Authenticate with GP 
+  --- Compute key diversification
   ------------------------------------------------------------
+  -- select CM
   gp.select_applet(CM_AID, card)
+  -- initialize update
+  sw, response = gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  -- get key diversification using CPS/EMV
+  local diversified_keyset = gp.diversify_key(gp.KEY_DIVERSIFY_MODE.EMV, response, normal_key)
+
+  ------------------------------------------------------------
+  --- Authenticate with default GP key 
+  ------------------------------------------------------------
+  -- select CM
+  gp.select_applet(CM_AID, card)
+  -- initialize update
   gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  -- external authenticate
   gp.external_authenticate()
+  -- put the new key set
+  gp.put_keyset(diversified_keyset)
 
-
+  -- run the GPAuthenticate_CPS.lua to verify the put key result
+  
   ------------------------------------------------------------
   --- Disconnect reader and close the log file
   ------------------------------------------------------------

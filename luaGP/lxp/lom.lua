@@ -1,6 +1,4 @@
---package.path = "C:\\SCPComLib8.14\\MCES_8.14\\ChipCoding\\Scripts\\LuaGP\\?.lua;" .. package.path 
---package.path = "D:\\MCES\\CodingContact\\LuaScripts\\LuaGP\\?.lua;" .. package.path
-package.path = "..\\LuaGP\\?.lua;" .. package.path 
+package.path = ".\\LuaGP\\?.lua;" .. package.path 
 
 
 -- See Copyright Notice in license.html
@@ -39,11 +37,11 @@ end
 
 local function parse (o)
   local c = { StartElement = starttag,
-              EndElement = endtag,
-              CharacterData = text,
-              _nonstrict = true,
-              stack = {{}}
-            }
+    EndElement = endtag,
+    CharacterData = text,
+    _nonstrict = true,
+    stack = {{}}
+  }
   local p = lxp.new(c)
   local status, err
   if type(o) == "string" then
