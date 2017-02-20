@@ -1,3 +1,4 @@
+----------------------------------------------------------------------------------------------
 -- Description  : Global platform implementation based on LUA
 -- Author       : Bondhan Novandy
 -- Date         : 5 February 2016
@@ -7,7 +8,8 @@
 --                - Diversify Key (None, EMV, VISA2)
 --                - Put key
 --                - Modular design
-
+-- Note         : It is mostly porting/implementation of GlobalPlatform Master by Martin Paljak
+----------------------------------------------------------------------------------------------
 --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()

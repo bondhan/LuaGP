@@ -31,4 +31,18 @@ function _M.deepcopy(orig)
     return copy
 end
 
+-- convert from binary to hex string
+function _M.string_tohex(str)
+    return (str:gsub('.', function (c)
+        return string.format('%02X', string.byte(c))
+    end))
+end
+
+-- convert from hex string to number
+function _M.string_fromhex(str)
+    return (str:gsub('..', function (cc)
+        return string.char(tonumber(cc, 16))
+    end))
+end
+
 return _M

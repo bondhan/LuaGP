@@ -1,3 +1,6 @@
+ package.path = "D:\\GCC_WORK\\WORKSPACE\\SOURCES\\ZeroBraneStudioEduPack-1.40-win32\\bin\\LuaSmartCardLibrary.dll;" .. package.path 
+
+ 
  --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()
