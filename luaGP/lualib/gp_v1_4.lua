@@ -77,6 +77,15 @@ _M.PUT_KEY_MODE = setmetatable({MODIF = 1, REPLACE = 2, ADD = 4}, {__index = sho
 _M.SCP_MODE = setmetatable({SCP_ANY = 0, SCP_01_05 = 1, SCP_01_15 = 2, SCP_02_04 = 3, SCP_02_05 = 4,SCP_02_0A = 5, SCP_02_0B = 6, SCP_02_14 = 7, SCP_02_15 = 8, SCP_02_1A = 9, SCP_02_1B = 10}, {__index = show_key_not_found})
 
 
+local CLA_GP = 0x80
+local CLA_MAC = 0x84
+local INS_INITIALIZE_UPDATE = 0x50
+local INS_INSTALL = 0xE6
+local INS_LOAD = 0xE8
+local INS_DELETE = 0xE4
+local INS_GET_STATUS = 0xF2
+local INS_PUT_KEY = 0xD8
+
 -----------------------------------------------------------------------------------------------------------
 -- LOCAL FUNCTION, THE SCOPE IS ONLY INSIDE THIS FILE
 -----------------------------------------------------------------------------------------------------------
@@ -586,7 +595,7 @@ function _M.diversify_key(divers_mode, update_response, key_set)
       divers_string = fillEmvStr(update_response_str, i)	
       --log.print(log.DEBUG, "i = " .. i)
     end	
-    
+
     local iv = bytes.new(8,"00 00 00 00 00 00 00 00")	
     local divers_bytes = bytes.new(8, divers_string)	
 
@@ -1103,5 +1112,38 @@ function _M.get_current_key_version(update_response)
 
   return keyVersion  
 end
+
+
+-- Global platform send get status APDU command
+local function getConcatenatedStatus(p1, data)
+  local  sw, response = card.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x00, data))
+
+  if (sw ~= 0x9000 and sw ~= 0x6310) then
+    return response
+  end
+
+  while (sw == 0x6310) do
+    sw, response = card.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x01, data))
+
+    if (sw ~= 0x9000 and sw ~=0x6310) then
+      error("Fail on get status command SW= " .. tostring(sw))
+    end
+  end
+
+  return response
+end
+
+
+-- Global platform get status
+function _M.getStatus()
+  local p1s = { 0x80, 0x40 }
+  local data = "4F00"
+
+  for i=1,#p1s do
+    local response= getConcatenatedStatus(p1s[i], data)  
+  end
+
+end
+
 
 return _M

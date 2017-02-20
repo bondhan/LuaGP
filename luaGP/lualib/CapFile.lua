@@ -2,50 +2,34 @@
 -- Description  : Global platform implementation based on LUA
 -- Author       : Bondhan Novandy
 -- Date         : 5 February 2016
--- Features     : - Select applet
---                - Initialize update
---                - External Authenticate
---                - Diversify Key (None, EMV, VISA2)
---                - Put key
---                - Modular design
+-- Features     : - CAP File
 -- Note         : It is mostly porting/implementation of GlobalPlatform Master by Martin Paljak
 ----------------------------------------------------------------------------------------------
 
 --load all the module from the dll
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_log")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_bytes")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_asn1")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_crypto")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_luasql_odbc")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_socket_core")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_mime_core")()
-package.loadlib("LuaSmartCardLibrary.dll", "luaopen_lxp")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_zip")()
 
 package.path = ".\\LuaGP\\?.lua;" .. package.path 
-
+-----------------------------------------------------------------------------
+-- Declare module and import dependencies
+-----------------------------------------------------------------------------
 local util = require("lualib.util")
+local AID = require("lualib.AID")
 
 -----------------------------------------------------------------------------
 -- Please assign either to choose pcsc or muehlbauer
 -----------------------------------------------------------------------------
 local _card = {}
 
------------------------------------------------------------------------------
--- Declare module and import dependencies
------------------------------------------------------------------------------
 local base = _G
 
 _card.CapFile = {}
 local _M = _card.CapFile
 
 -----------------------------------------------------------------------------
--- Declare module and import dependencies
+-- Declare the variables on the scope of this module
 -----------------------------------------------------------------------------
 
-_M.PackageName = ""
 _M.PackageAID = ""
 _M.AppletAIDs = {}
 _M.DapBlocks = {}
@@ -56,7 +40,7 @@ _M.componentNames = { "Header", "Directory", "Import", "Applet", "Class", "Metho
 _M.CapComponents = {}
 
 -----------------------------------------------------------------------------------------------------------
--- LOCAL FUNCTION, THE SCOPE IS ONLY INSIDE THIS FILE
+-- Functions in the scope of this module
 -----------------------------------------------------------------------------------------------------------
 
 function _M.CapFile(file)
@@ -99,6 +83,7 @@ function _M.CapFile(file)
     ::endloop::
   end
 
+  -- get the package AID
   local header = _M.CapComponents["Header"]
 
   index = 1;  -- starts from one in lua
@@ -123,14 +108,52 @@ function _M.CapFile(file)
 
   local _PackageAID = string.sub(header, index, -1 + index + len*2);
 
-  log.print(log.DEBUG, "package AID = " .. _PackageAID )
+  --getting the ascii name
+  index = index + len*2
+  len = tonumber(string.sub(header, index, index+1), 16)
+  index = index + 1*2
 
---  index = index + len*2 
---  len = tonumber(string.sub(header, index, index+1), 16)
---  index = index + 1*2 
---  local _PackageAIDString = util.string_fromhex(string.sub(header, index, -1 + index + len*2));
---  log.print(log.DEBUG, "package AID Name = " .. _PackageAIDString)  
+  local name = util.string_fromhex(string.sub(header, index, -1 + index + len*2));
 
-end
+  _M.PackageAID = AIDClass(_PackageAID, name)
+
+  log.print(log.DEBUG, "Package AID = " .. _M.PackageAID.aid .. " Name = " .. _M.PackageAID.readable_name)
+  header = nil
+
+  -- get Applets inside
+  local applet = _M.CapComponents["Applet"]
+  index = 1;  -- starts from one in lua
+  -- applet[0] should be 3;
+  index = index + 1*2
+  -- applet[1] should be 0;
+  index = index + 1*2
+  -- applet[2] should be remaining length
+  index = index + 1*2
+  -- header[3] should be number of applets
+  -- get numbers of applet
+  local num = tonumber(string.sub(applet, index, index+1), 16)
+
+  index = index + 1*2
+
+  for j = 1, num do
+    len = tonumber(string.sub(applet, index, index+1), 16) -- aid length
+    index = index + 1*2
+
+    tmp = string.sub(applet, index, -1 + index + len*2);
+    _M.AppletAIDs[j] = AIDClass(tmp)
+
+    index = index + len*2
+    index = index + 2*2
+
+  end
+
+  log.print(log.DEBUG, "Found " .. #_M.AppletAIDs .. " Applets: ")
+  for i=1,#_M.AppletAIDs do
+      log.print(log.DEBUG, tostring(i) .. " = " .. _M.AppletAIDs[i].aid)
+  end
+
+
+end -- end of function
+
 
 return _M

@@ -38,7 +38,7 @@ function _M.string_tohex(str)
     end))
 end
 
--- convert from hex string to number
+-- convert from hex string to ASCII
 function _M.string_fromhex(str)
     return (str:gsub('..', function (cc)
         return string.char(tonumber(cc, 16))
