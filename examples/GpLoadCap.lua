@@ -16,6 +16,8 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 local gp = require("lualib.gp_v1_4")
 local cap = require("lualib.CapFile")
 
+log.open_logfile(".\\log\\GpLoadCap.log")
+
 local filename = "D:/tmp/CslNSICC_ALLv2_2013.cap"
 
 cap.CapFile(filename)

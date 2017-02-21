@@ -14,7 +14,7 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 
 local gp = require("lualib.gp_v1_4")
 
-log.open_logfile(".\\log\\GpAuthenticate_None.log")
+log.open_logfile(".\\log\\GpListRegistry.log")
 
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
