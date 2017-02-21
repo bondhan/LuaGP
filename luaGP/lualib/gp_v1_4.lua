@@ -56,7 +56,7 @@ _M.GP_CARD_CHALLENGE = ""
 _M.GP_HOST_CHALLENGE = ""
 _M.CARD_KEY_VERSION = 0x00
 _M.C_MAC = bytes.new(8,"0000000000000000")
--- format: #key -> {AIDClass, life_cycle, privilege, kind, {executables}}
+-- format: #key -> {AID_string, life_cycle, privilege, kind, {executables}}
 _M.LIST_AIDS = {}
 
 local show_key_not_found = setmetatable({}, {__index = function (t, k)  -- {} an empty table, and after the comma, a custom function failsafe
@@ -1187,7 +1187,7 @@ local function getStatus(cardobj)
         kind = _M.KIND.IssuerSecurityDomain
       end
 
-      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
+--      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
 
       _M.LIST_AIDS[index_list] = {aid, life_cyle, privileges, kind, {nil}}
       index_list = index_list + 1
@@ -1238,15 +1238,15 @@ local function getStatus(cardobj)
         end
       end
 
-      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
+--      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
 
-      if #executables > 0 then
-        log.print(log.DEBUG, "executables: ")
-      end
+--      if #executables > 0 then
+--        log.print(log.DEBUG, "executables: ")
+--      end
 
-      for k=1,#executables do
-        log.print(log.DEBUG, "- " .. executables[k])
-      end
+--      for k=1,#executables do
+--        log.print(log.DEBUG, "- " .. executables[k])
+--      end
 
       _M.LIST_AIDS[index_list] = {aid, life_cyle, privileges, kind, util.deepcopy(executables)}
       index_list = index_list + 1
@@ -1254,10 +1254,87 @@ local function getStatus(cardobj)
   end
 end
 
-function _M.listCardContent(cardobj)
-  getStatus(cardobj)
+
+local function describeGpLifeCycle(kind, lifeCycle)
+  local kind_name = nil
+  local lifeCycle_string = nil
+
+  if (kind == _M.KIND.IssuerSecurityDomain or kind == _M.KIND.SecurityDomain) then
+    if (kind == _M.KIND.IssuerSecurityDomain) then
+      kind_name = "ISD "
+    else
+      kind_name = "SD "
+    end
+
+    if (lifeCycle == 0x01) then
+      lifeCycle_string = "OP_READY"
+    elseif (lifeCycle == 0x07) then
+      lifeCycle_string = "INITIALIZED"
+    elseif (lifeCycle == 0x0F) then
+      lifeCycle_string = "SECURED"
+    elseif (lifeCycle == 0x7F) then
+      lifeCycle_string = "CARD_LOCKED"
+    elseif (lifeCycle == 0xFF) then
+      lifeCycle_string = "TERMINATED"
+    else
+      error("ERROR")
+    end
+  elseif (kind == _M.KIND.Application) then
+    kind_name = "App "
+    if (lifeCycle == 0x03) then
+      lifeCycle_string = "INSTALLED"
+    elseif (lifeCycle <= 0x7F) then
+      lifeCycle_string = "SELECTABLE"
+    elseif (lifeCycle > 0x83) then
+      lifeCycle_string = "LOCKED"
+    else
+      error("ERROR")
+    end
+  elseif (kind == _M.KIND.ExecutableLoadFilesAndModules) then
+    kind_name = "Exm "
+    if (lifeCycle == 0x01) then
+      lifeCycle_string = "LOADED"
+    elseif (lifeCycle == 0x00) then
+      lifeCycle_string = "LOGICALLY_DELETED"
+    else
+      error("ERROR")
+    end
+  elseif (kind == _M.KIND.ExecutableLoadFiles) then
+    kind_name = "Exe "
+    if (lifeCycle == 0x01) then
+      lifeCycle_string = "LOADED"
+    elseif (lifeCycle == 0x00) then
+      lifeCycle_string = "LOGICALLY_DELETED"
+    else
+      error("ERROR")
+    end
+  else
+    error("ERROR")
+  end
+
+  return (kind_name .. lifeCycle_string)
 end
 
+function _M.listCardContent(cardobj)
+  local lifeCycle, priv, kind
+  getStatus(cardobj)
+
+  assert(_M.LIST_AIDS) --if nil then error
+
+  --loop through the populated list
+  -- format: #key -> {AID_string, life_cycle, privilege, kind, {executables}}
+  for i=1,#_M.LIST_AIDS do
+
+    lifeCycle = _M.LIST_AIDS[i][2]
+    priv = _M.LIST_AIDS[i][3]
+    kind = _M.LIST_AIDS[i][4]
+
+    log.print(log.INFO, "AID  : " .. _M.LIST_AIDS[i][1]) -- AID
+    log.print(log.INFO, "       " .. describeGpLifeCycle(kind, lifeCycle)) -- Life Cycle
+
+  end
+
+end
 
 
 return _M
