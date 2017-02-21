@@ -26,6 +26,7 @@ package.path = ".\\LuaGP\\?.lua;" .. package.path
 
 local xlmrpc_lua = require("xmlrpc.http")
 local util = require("lualib.util")
+local AID = require("lualib.AID")
 
 -----------------------------------------------------------------------------
 -- Please assign either to choose pcsc or muehlbauer
@@ -55,6 +56,8 @@ _M.GP_CARD_CHALLENGE = ""
 _M.GP_HOST_CHALLENGE = ""
 _M.CARD_KEY_VERSION = 0x00
 _M.C_MAC = bytes.new(8,"0000000000000000")
+-- format: #key -> {AIDClass, life_cycle, privilege, kind, {executables}}
+_M.LIST_AIDS = {}
 
 local show_key_not_found = setmetatable({}, {__index = function (t, k)  -- {} an empty table, and after the comma, a custom function failsafe
       error("Key doesn't exist in the metatable list")
@@ -75,6 +78,9 @@ _M.PUT_KEY_MODE = setmetatable({MODIF = 1, REPLACE = 2, ADD = 4}, {__index = sho
 
 --SCP Mode
 _M.SCP_MODE = setmetatable({SCP_ANY = 0, SCP_01_05 = 1, SCP_01_15 = 2, SCP_02_04 = 3, SCP_02_05 = 4,SCP_02_0A = 5, SCP_02_0B = 6, SCP_02_14 = 7, SCP_02_15 = 8, SCP_02_1A = 9, SCP_02_1B = 10}, {__index = show_key_not_found})
+
+--Kind of applet
+_M.KIND = setmetatable({IssuerSecurityDomain = 0, Application = 1, SecurityDomain = 2, ExecutableLoadFiles = 3, ExecutableLoadFilesAndModules = 4 }, {__index = show_key_not_found})
 
 
 local CLA_GP = 0x80
@@ -648,7 +654,7 @@ function _M.doDiversifyKeys(key_set, host_challenge, apdu_mode, key_derivation_t
     random_challenge = host_challenge
   end	
 
-  sw, response = card.send_auto(create_cmd_apdu(0x80, 0x50, 0x00, 0x00, random_challenge))
+  sw, response = cardobj.send_auto(create_cmd_apdu(0x80, 0x50, 0x00, 0x00, random_challenge))
 
   if sw == 0x6982 or sw == 0x6983 then
     long.print(log.ERROR, "INITIALIZE UPDATE failed, card LOCKED?")
@@ -747,7 +753,7 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
     random_challenge = host_challenge
   end	
 
-  sw, response = card.send_auto(create_cmd_apdu(0x80, 0x50, key_set.KEY_VERSION, key_set.KEY_ID, random_challenge))
+  sw, response = cardobj.send_auto(create_cmd_apdu(0x80, 0x50, key_set.KEY_VERSION, key_set.KEY_ID, random_challenge))
 
   if sw == 0x6982 or sw == 0x6983 then
     long.print(log.ERROR, "INITIALIZE UPDATE failed, card LOCKED?")
@@ -873,7 +879,7 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
     random_challenge = host_challenge
   end	
 
-  sw, response = card.send_auto(create_cmd_apdu(0x80, 0x50, key_set.KEY_VERSION, key_set.KEY_ID, random_challenge))
+  sw, response = cardobj.send_auto(create_cmd_apdu(0x80, 0x50, key_set.KEY_VERSION, key_set.KEY_ID, random_challenge))
 
   if sw == 0x6982 or sw == 0x6983 then
     long.print(log.ERROR, "INITIALIZE UPDATE failed, card LOCKED?")
@@ -980,7 +986,7 @@ end
 
 
 --do the external authenticate
-function _M.external_authenticate()	
+function _M.external_authenticate(cardobj)	
   local host_cryptogram = compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(GP_CARD_CHALLENGE, GP_HOST_CHALLENGE), true)
   local apdu = create_cmd_apdu(0x84, 0x82, tonumber(GP_APDU_MODE), 0x00, tostring(host_cryptogram))
   local secure_apdu
@@ -995,12 +1001,12 @@ function _M.external_authenticate()
     error("SCPX Not implemented yet")
   end
 
-  local sw, response = card.send(secure_apdu)
+  local sw, response = cardobj.send(secure_apdu)
   verify_sw(sw, 0x9000)
 end
 
 
-function _M.put_keyset(new_key_set)
+function _M.put_keyset(new_key_set, cardobj)
   local isReplace = false
 
   --if not virgin card then replace the key
@@ -1038,7 +1044,7 @@ function _M.put_keyset(new_key_set)
 
   if (GP_APDU_MODE == _M.APDU_MODE.CLR) then 
     apdu = create_cmd_apdu(0x80, 0xD8, P1, P2, encodedKeyData)
-    sw, response = card.send_auto(apdu)
+    sw, response = cardobj.send_auto(apdu)
     verify_sw(sw, 0x9000)
   else
 --  log.print(log.DEBUG, "C_MAC " .. tostring(C_MAC))
@@ -1053,7 +1059,7 @@ function _M.put_keyset(new_key_set)
     C_MAC = crypto.encrypt(SDES_ECB, C_MAC)			
 
     local secure_apdu = generateMAC_SCP02(bytes.new(8, apdu));
-    sw, response = card.send_auto(secure_apdu)
+    sw, response = cardobj.send_auto(secure_apdu)
     verify_sw(sw, 0x9000)
   end
 
@@ -1115,15 +1121,15 @@ end
 
 
 -- Global platform send get status APDU command
-local function getConcatenatedStatus(p1, data)
-  local  sw, response = card.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x00, data))
+local function getConcatenatedStatus(p1, data, cardobj)
+  local  sw, response = cardobj.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x00, data))
 
   if (sw ~= 0x9000 and sw ~= 0x6310) then
     return response
   end
 
   while (sw == 0x6310) do
-    sw, response = card.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x01, data))
+    sw, response = cardobj.send_auto(create_cmd_apdu(CLA_GP, INS_GET_STATUS, p1, 0x01, data))
 
     if (sw ~= 0x9000 and sw ~=0x6310) then
       error("Fail on get status command SW= " .. tostring(sw))
@@ -1133,17 +1139,125 @@ local function getConcatenatedStatus(p1, data)
   return response
 end
 
-
 -- Global platform get status
-function _M.getStatus()
+local function getStatus(cardobj)
   local p1s = { 0x80, 0x40 }
   local data = "4F00"
+  local len = 0
+  local aid_executable = ""
+  local aid = ""
+  local index, response_str, kind
+  local aid_obj
+  local life_cyle, privileges
+  local num = 0
+  local index_list = 1
+
+  -- clear 
+  _M.LIST_PKG_AIDS = {}
+  _M.LIST_APPLET_AIDS = {}
 
   for i=1,#p1s do
-    local response= getConcatenatedStatus(p1s[i], data)  
+    index = 1 -- lua always start from 1
+    response_str = tostring(getConcatenatedStatus(p1s[i], data, cardobj))
+    kind = ""
+
+    --loop the response data and parse it
+    while index < string.len(response_str) do
+      len = tonumber(string.sub(response_str, index, index+1), 16)
+
+      index = index + 1*2
+
+      aid = string.sub(response_str, index, -1 + index + len*2)
+      aid_obj = AIDClass(aid)
+
+      index = index + len*2
+      life_cyle = tonumber(string.sub(response_str, index, index+1), 16)
+      index = index + 1*2
+      privileges = tonumber(string.sub(response_str, index, index+1), 16)
+
+      index = index + 1*2
+
+      if p1s[i]==0x40 then
+        if (privileges & 0x80) == 0 then
+          kind = _M.KIND.Application
+        else
+          kind = _M.KIND.SecurityDomain
+        end
+      else 
+        kind = _M.KIND.IssuerSecurityDomain
+      end
+
+      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
+
+      _M.LIST_AIDS[index_list] = {aid, life_cyle, privileges, kind, {nil}}
+      index_list = index_list + 1
+
+    end
   end
 
+  -- with another 
+  p1s = { 0x20, 0x10 } 
+  for i=1,#p1s do
+    index = 1 -- lua always start from 1
+    response_str = tostring(getConcatenatedStatus(p1s[i], data, cardobj))
+    kind = ""
+
+    --loop the response data and parse it
+    while index < string.len(response_str) do
+      len = tonumber(string.sub(response_str, index, index+1), 16)
+
+      index = index + 1*2
+
+      aid = string.sub(response_str, index, -1 + index + len*2)
+      aid_obj = AIDClass(aid)
+
+      index = index + len*2
+      life_cyle = tonumber(string.sub(response_str, index, index+1), 16)
+      index = index + 1*2
+      privileges = tonumber(string.sub(response_str, index, index+1), 16)
+
+      index = index + 1*2
+
+      if p1s[i]==0x10 then
+        kind = _M.KIND.ExecutableLoadFilesAndModules
+      else
+        kind = _M.KIND.ExecutableLoadFiles
+      end
+
+      local executables = {}
+      if p1s[i]==0x10 then
+        num = tonumber(string.sub(response_str, index, index+1), 16)
+
+        index = index + 1*2
+        for j=1,num do
+          len = tonumber(string.sub(response_str, index, index+1), 16)
+          index = index + 1*2
+          aid_executable = string.sub(response_str, index, -1 + index + len*2)
+          index = index + len*2
+          executables[j] = aid_executable
+        end
+      end
+
+      log.print(log.DEBUG, "AID = " .. aid .. " LC = " .. string.format('0x%02X', life_cyle) .. " priv = " .. string.format('0x%02X', privileges) .. " kind = " .. kind)
+
+      if #executables > 0 then
+        log.print(log.DEBUG, "executables: ")
+      end
+
+      for k=1,#executables do
+        log.print(log.DEBUG, "- " .. executables[k])
+      end
+
+      _M.LIST_AIDS[index_list] = {aid, life_cyle, privileges, kind, util.deepcopy(executables)}
+      index_list = index_list + 1
+    end
+  end
 end
+
+function _M.listCardContent(cardobj)
+  getStatus(cardobj)
+end
+
 
 
 return _M

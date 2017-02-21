@@ -19,8 +19,8 @@ log.open_logfile(".\\log\\GpChangeKeyNoDerivation.log")
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
 --////////////////////////////////////////////////////////////////////
-card = pcsc_card
---card = mlb_card
+local card = pcsc_card
+--local card = mlb_card
 
 -- 0 not permanent
 -- 1 is permanent
@@ -104,9 +104,9 @@ local pps = card.do_pps(0x11, 4910000)
   -- select CM
   gp.select_applet(CM_AID, card)
   -- initialize update
-  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
   -- external authenticate
-  gp.external_authenticate()
+  gp.external_authenticate(card)
   
   -- put the default key set
   normal_key.KEY_ID = 0x01

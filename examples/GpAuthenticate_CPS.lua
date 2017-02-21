@@ -1,6 +1,3 @@
- package.path = "D:\\GCC_WORK\\WORKSPACE\\SOURCES\\ZeroBraneStudioEduPack-1.40-win32\\bin\\LuaSmartCardLibrary.dll;" .. package.path 
-
- 
  --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()
@@ -22,8 +19,8 @@ log.open_logfile(".\\log\\GpAuthenticate_CPS.log")
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
 --////////////////////////////////////////////////////////////////////
-card = pcsc_card
---card = mlb_card
+local card = pcsc_card
+--local card = mlb_card
 
 -- 0 not permanent
 -- 1 is permanent
@@ -106,9 +103,9 @@ local pps = card.do_pps(0x11, 4910000)
   -- select CM
   gp.select_applet(CM_AID, card)
   -- initialize update
-  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
  -- external authenticate
-  gp.external_authenticate()
+  gp.external_authenticate(card)
 
   ------------------------------------------------------------
   --- Disconnect reader and close the log file

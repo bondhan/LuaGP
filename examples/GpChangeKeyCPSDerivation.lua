@@ -19,8 +19,8 @@ log.open_logfile(".\\log\\GpChangeKeyCPSDerivation.log")
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
 --////////////////////////////////////////////////////////////////////
-card = pcsc_card
---card = mlb_card
+local card = pcsc_card
+--local  card = mlb_card
 
 -- 0 not permanent
 -- 1 is permanent
@@ -104,7 +104,7 @@ local pps = card.do_pps(0x11, 4910000)
   -- select CM
   gp.select_applet(CM_AID, card)
   -- initialize update
-  sw, response = gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  sw, response = gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
   -- get key diversification using CPS/EMV
   local diversified_keyset = gp.diversify_key(gp.KEY_DIVERSIFY_MODE.EMV, response, normal_key)
 
@@ -114,11 +114,11 @@ local pps = card.do_pps(0x11, 4910000)
   -- select CM
   gp.select_applet(CM_AID, card)
   -- initialize update
-  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
+  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
   -- external authenticate
-  gp.external_authenticate()
+  gp.external_authenticate(card)
   -- put the new key set
-  gp.put_keyset(diversified_keyset)
+  gp.put_keyset(diversified_keyset, card)
 
   -- run the GPAuthenticate_CPS.lua to verify the put key result
   

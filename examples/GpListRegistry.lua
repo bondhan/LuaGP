@@ -19,7 +19,7 @@ log.open_logfile(".\\log\\GpAuthenticate_None.log")
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
 --////////////////////////////////////////////////////////////////////
-card = pcsc_card
+local card = pcsc_card
 --card = mlb_card
 
 -- 0 not permanent
@@ -102,9 +102,9 @@ local pps = card.do_pps(0x11, 4910000)
   --- Authenticate with GP 
   ------------------------------------------------------------
   gp.select_applet(CM_AID, card)
-  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, cardobj)
-  gp.external_authenticate()
-  gp.getStatus()
+  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
+  gp.external_authenticate(card)
+  gp.listCardContent(card)
 
   ------------------------------------------------------------
   --- Disconnect reader and close the log file
