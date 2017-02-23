@@ -1,3 +1,10 @@
+-- Compatible with Lua 5.3.
+--
+-- Author       : Bondhan Novandy
+-- License      : The MIT License (MIT)
+-- Information  : Loading cap file into the GP card
+--
+
 --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()

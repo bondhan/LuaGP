@@ -1,3 +1,11 @@
+-- Compatible with Lua 5.3.
+--
+-- Author       : Bondhan Novandy
+-- License      : The MIT License (MIT)
+-- Information  : 1st Authenticate with the CM
+--                2rd Put keyset to the card
+--
+
 --load all the module from the dll
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_card")()
 package.loadlib("LuaSmartCardLibrary.dll", "luaopen_sam")()
@@ -63,62 +71,50 @@ if (isconnected == false) then
   return
 end
 
-atr = card.get_atr()
+local atr = card.get_atr()
 log.print(log.INFO,"Card ATR = " .. atr)
 
+local sw
+local response
 
---local pps = card.do_pps(0x32, 4910000) 
-local pps = card.do_pps(0x11, 4910000) 
-  if (pps == false) then
-    card.disconnect_reader()
-    error("PPS Failed")
-    return
-  end
-
-  local atr = card.get_atr()
-  log.print(log.INFO,"Card ATR = " .. atr)
-
-  local sw
-  local response
-
-  -------------------------------------------------------------
-  ---AUTHENTICATE WITH CM
-  ------------------------------------------------------------
+-------------------------------------------------------------
+---AUTHENTICATE WITH CM
+------------------------------------------------------------
 --Set secure messaging type
-  local apdu_mode = gp.APDU_MODE.CLR
+local apdu_mode = gp.APDU_MODE.CLR
 
 --Set key diversification
-  local key_div = gp.KEY_DIVERSIFY_MODE.EMV
+local key_div = gp.KEY_DIVERSIFY_MODE.EMV
 
 --the SCP mode
-  local scp_mode = gp.SCP_MODE.SCP_02_15
+local scp_mode = gp.SCP_MODE.SCP_02_15
 
 --ISD
-  local  CM_AID = "A000000003000000"
+local  CM_AID = "A000000003000000"
 
-  local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
+local normal_key = gp.set_kmc("404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", "404142434445464748494A4B4C4D4E4F", 0x00, 0x00)
 
-  ------------------------------------------------------------
-  --- Authenticate with default GP key using diversified EMV/CPS
-  ------------------------------------------------------------
-  -- select CM
-  gp.select_applet(CM_AID, card)
-  -- initialize update
-  gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
-  -- external authenticate
-  gp.external_authenticate(card)
-  
-  -- put the default key set
-  normal_key.KEY_ID = 0x01
-  normal_key.KEY_VERSION = 0x01
-  
-  gp.put_keyset(normal_key)
+------------------------------------------------------------
+--- Authenticate with default GP key using diversified EMV/CPS
+------------------------------------------------------------
+-- select CM
+gp.select_applet(CM_AID, card)
+-- initialize update
+gp.init_update(normal_key, host_random, apdu_mode, key_div, scp_mode, card)
+-- external authenticate
+gp.external_authenticate(card)
 
-  -- run the GPAuthenticate_None.lua to verify the put key result
-  
-  ------------------------------------------------------------
-  --- Disconnect reader and close the log file
-  ------------------------------------------------------------
-  card.disconnect_reader();
+-- put the default key set
+normal_key.KEY_ID = 0x01
+normal_key.KEY_VERSION = 0x01
 
-  log.close_logfile()
+gp.put_keyset(normal_key, card)
+
+-- run the GPAuthenticate_None.lua to verify the put key result
+
+------------------------------------------------------------
+--- Disconnect reader and close the log file
+------------------------------------------------------------
+card.disconnect_reader();
+
+log.close_logfile()

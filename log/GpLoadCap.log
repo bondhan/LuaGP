@@ -5,3 +5,10 @@
 0003 DEBUG   Found 2 Applets: 
 0004 DEBUG   1 = A0000000770106000910100100000050
 0005 DEBUG   2 = A0000000770106000910100100000001
+.\log\GpLoadCap.log log start: Thu Feb 23 11:11:51 2017
+0000 DEBUG   match com/csl/banking/nsicc/javacard/Header.cap with /javacard/Header.cap
+0001 DEBUG   package name = com/csl/banking/nsicc/javacard/
+0002 DEBUG   Package AID = A0000000770106000910100000000001 Name = com/csl/banking/nsicc
+0003 DEBUG   Found 2 Applets: 
+0004 DEBUG   1 = A0000000770106000910100100000050
+0005 DEBUG   2 = A0000000770106000910100100000001

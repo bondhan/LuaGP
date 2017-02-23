@@ -176,7 +176,7 @@ local function create_cmd_apdu(cla, ins, p1, p2, data)
   return string.upper(apdu)
 end
 
-local function compute_mac(key, text, doPad)
+function _M.compute_mac(key, text, doPad)
   local TDES_CBC
   local iv = bytes.new(8,"00 00 00 00 00 00 00 00")	
 
@@ -192,7 +192,7 @@ local function compute_mac(key, text, doPad)
 end
 
 --session key derivation based on SCP01
-local function deriveSessionKeysSCP01(diversified_derived_key, rnd_challenge, card_challenge)
+function _M.deriveSessionKeysSCP01(diversified_derived_key, rnd_challenge, card_challenge)
   local session_key = {}
 
   local cardChallenge = bytes.new(8, card_challenge)
@@ -232,7 +232,7 @@ end
 
 
 --session key derivation based on SCP02
-local function deriveSessionKeysSCP02(diversified_derived_key, seq, implicit_channel)
+function _M.deriveSessionKeysSCP02(diversified_derived_key, seq, implicit_channel)
   local session_key = {}
 
   local enc_sku_derivation = bytes.new(8,"0182" .. seq .. "000000000000000000000000")
@@ -835,17 +835,17 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
   --deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
 
   if (scpMajorVersion == 1) then
-    GP_SESSION_KEYS = deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
+    GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
   elseif (scpMajorVersion == 2) then
     --seq = Arrays.copyOfRange(update_response, 12, 14)
     seq = string.sub(update_response, 25, 28)
     --log.print(log.DEBUG, "seq " .. tostring(seq))
-    GP_SESSION_KEYS = deriveSessionKeysSCP02(diversified_derived_key, seq, false)
+    GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
   else
     error("Session key derivation for SCP03 not supported")
   end		
 
-  local my_cryptogram = compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
+  local my_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
 
   if (card_cryptogram ~= tostring(my_cryptogram)) then
     error("Mac do not match!")
@@ -960,17 +960,17 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
   --deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
 
   if (scpMajorVersion == 1) then
-    GP_SESSION_KEYS = deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
+    GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
   elseif (scpMajorVersion == 2) then
     --seq = Arrays.copyOfRange(update_response, 12, 14)
     seq = string.sub(update_response, 25, 28)
     --log.print(log.DEBUG, "seq " .. tostring(seq))
-    GP_SESSION_KEYS = deriveSessionKeysSCP02(diversified_derived_key, seq, false)
+    GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
   else
     error("Session key derivation for SCP03 not supported")
   end		
 
-  local my_cryptogram = compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
+  local my_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
 
   if (card_cryptogram ~= tostring(my_cryptogram)) then
     error("Mac do not match!")
@@ -987,7 +987,7 @@ end
 
 --do the external authenticate
 function _M.external_authenticate(cardobj)	
-  local host_cryptogram = compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(GP_CARD_CHALLENGE, GP_HOST_CHALLENGE), true)
+  local host_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(GP_CARD_CHALLENGE, GP_HOST_CHALLENGE), true)
   local apdu = create_cmd_apdu(0x84, 0x82, tonumber(GP_APDU_MODE), 0x00, tostring(host_cryptogram))
   local secure_apdu
 
