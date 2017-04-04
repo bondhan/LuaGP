@@ -55,6 +55,7 @@ _M.GP_SCP_VERSION = 0x02
 _M.GP_CARD_CHALLENGE = ""
 _M.GP_HOST_CHALLENGE = ""
 _M.CARD_KEY_VERSION = 0x00
+_M.CARD_SCP_VERSION = 0x00
 _M.C_MAC = bytes.new(8,"0000000000000000")
 -- format: #key -> {AID_string, life_cycle, privilege, kind, {executables}}
 _M.LIST_AIDS = {}
@@ -268,16 +269,16 @@ end
 --Compute the mac of apdu based on scp02
 local function generateMAC_SCP02(apdu_cmd)
 
-  local CBC_MAC = crypto.create_context(crypto.ALG_ISO9797_M3 + crypto.PAD_ISO9797_P2, GP_SESSION_KEYS.KEY_MAC);	
+  local CBC_MAC = crypto.create_context(crypto.ALG_ISO9797_M3 + crypto.PAD_ISO9797_P2, _M.GP_SESSION_KEYS.KEY_MAC);	
   local total = bytes.get(apdu_cmd, 4) + 0x08
   bytes.set(apdu_cmd, 4, total)
 
-  C_MAC = crypto.mac_iv(CBC_MAC, apdu_cmd, C_MAC)
+  _M.C_MAC = crypto.mac_iv(CBC_MAC, apdu_cmd, _M.C_MAC)
 
   log.print(log.DEBUG, "apdu =  " .. tostring(apdu_cmd))
-  log.print(log.DEBUG, "C_MAC =  " .. tostring(C_MAC))
+  log.print(log.DEBUG, "C_MAC =  " .. tostring(_M.C_MAC))
 
-  return bytes.concat(apdu_cmd, C_MAC)
+  return bytes.concat(apdu_cmd, _M.C_MAC)
 end
 
 
@@ -301,12 +302,12 @@ local function encodeNewKey(new_key_set)
   local new_key
   local kcv
 
-  if  CARD_SCP_VERSION == 1 then
+  if  _M.CARD_SCP_VERSION == 1 then
     log.print(log.ERROR, "SCP 01 not implemented")
     error("SCP 01 not implemented")
-  elseif  CARD_SCP_VERSION == 2 then                
+  elseif  _M.CARD_SCP_VERSION == 2 then                
 
-    key = bytes.new(8, GP_SESSION_KEYS.KEY_KEK)
+    key = bytes.new(8, _M.GP_SESSION_KEYS.KEY_KEK)
 
     for i = _M.KEY_TYPE.ENC, _M.KEY_TYPE.KEK do
 
@@ -631,8 +632,8 @@ function _M.diversify_key(divers_mode, update_response, key_set)
   end	
 
 --  -- make it the same with the current one
-  diversified_key.KEY_VERSION =  CARD_KEY_VERSION
-  diversified_key.KEY_ID =  CARD_KEY_VERSION
+  diversified_key.KEY_VERSION =  _M.CARD_KEY_VERSION
+  diversified_key.KEY_ID =  _M.CARD_KEY_VERSION
 
   return diversified_key
 end
@@ -681,29 +682,29 @@ function _M.doDiversifyKeys(key_set, host_challenge, apdu_mode, key_derivation_t
   local keyVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_KEY_VERSION = keyVersion;
+  _M.CARD_KEY_VERSION = keyVersion;
 
   --Get major SCP version from Key Information field in response
   local scpMajorVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_SCP_VERSION = scpMajorVersion
+  _M.CARD_SCP_VERSION = scpMajorVersion
 
   -- set the selected scp mode	
   if  (scp_mode == SCP_MODE.SCP_ANY) then
     if (scpMajorVersion == 1) then		
-      GP_SCP_MODE = SCP_MODE.SCP_01_05
+      _M.GP_SCP_MODE = SCP_MODE.SCP_01_05
     elseif (scpMajorVersion == 2) then
-      GP_SCP_MODE = SCP_MODE.SCP_02_15
+      _M.GP_SCP_MODE = SCP_MODE.SCP_02_15
     elseif (scpMajorVersion == 3) then
       log.print(log.ERROR, "SCP03 is not supported");
     end
   else
     log.print(log.WARNING, "Overriding SCP version: card reports " .. scpMajorVersion .. " but user requested " .. scp_mode)		
     if (scp_mode >= 1 or scp_mode <= 2) then
-      GP_SCP_MODE = SCP_MODE.SCP_01_05
+      _M.GP_SCP_MODE = SCP_MODE.SCP_01_05
     elseif (scp_mode > 2 or scp_mode <=  10) then
-      GP_SCP_MODE = SCP_MODE.SCP_02_15
+      _M.GP_SCP_MODE = SCP_MODE.SCP_02_15
     else
       error("error: " .. scp_mode .. " not supported yet")
     end
@@ -738,7 +739,7 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
   local sw, response
   local random_challenge = ""
 
-  GP_APDU_MODE = apdu_mode
+  _M.GP_APDU_MODE = apdu_mode
 
   --log.print(log.DEBUG, "key_derivation_type = " .. tostring(key_derivation_type))
 
@@ -780,7 +781,7 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
   local keyVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_KEY_VERSION = keyVersion;
+  _M.CARD_KEY_VERSION = keyVersion;
 
   --Get major SCP version from Key Information field in response
   local scpMajorVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
@@ -789,23 +790,23 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
   log.print(log.DEBUG, "Key Version (Hex) = " .. string.format("%02x", keyVersion))
   log.print(log.DEBUG, "SCP Major Version (Hex) = " .. string.format("%02x", scpMajorVersion))
 
-  CARD_SCP_VERSION = scpMajorVersion
+  _M.CARD_SCP_VERSION = scpMajorVersion
 
   -- set the selected scp mode	
   if  (scp_mode == _M.SCP_MODE.SCP_ANY) then
     if (scpMajorVersion == 1) then		
-      GP_SCP_MODE = _M.SCP_MODE.SCP_01_05;
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_01_05;
     elseif (scpMajorVersion == 2) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_02_15;
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_02_15;
     elseif (scpMajorVersion == 3) then
       log.print(log.ERROR, "SCP03 is not supported");
     end
   else
     log.print(log.WARNING, "Overriding SCP version: card reports " .. scpMajorVersion .. " but user requested " .. scp_mode)		
     if (scp_mode >= 1 or scp_mode <= 2) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
     elseif (scp_mode > 2 or scp_mode <=  10) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
     else
       error("error: " .. scp_mode .. " not supported yet")
     end
@@ -835,25 +836,25 @@ function _M.init_update_rpc(key_set, host_challenge, apdu_mode, key_derivation_t
   --deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
 
   if (scpMajorVersion == 1) then
-    GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
+    _M.GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
   elseif (scpMajorVersion == 2) then
     --seq = Arrays.copyOfRange(update_response, 12, 14)
     seq = string.sub(update_response, 25, 28)
     --log.print(log.DEBUG, "seq " .. tostring(seq))
-    GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
+    _M.GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
   else
     error("Session key derivation for SCP03 not supported")
   end		
 
-  local my_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
+  local my_cryptogram = _M.compute_mac(_M.GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
 
   if (card_cryptogram ~= tostring(my_cryptogram)) then
     error("Mac do not match!")
   end
 
-  GP_CARD_CHALLENGE = card_challenge
-  GP_HOST_CHALLENGE =  random_challenge	
-  GP_SCP_VERSION = scpMajorVersion
+  _M.GP_CARD_CHALLENGE = card_challenge
+  _M.GP_HOST_CHALLENGE =  random_challenge	
+  _M.GP_SCP_VERSION = scpMajorVersion
 
   return response
 end
@@ -910,8 +911,8 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
   local scpMajorVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_KEY_VERSION = keyVersion;
-  CARD_SCP_VERSION = scpMajorVersion
+  _M.CARD_KEY_VERSION = keyVersion;
+  _M.CARD_SCP_VERSION = scpMajorVersion
 
   log.print(log.DEBUG, "Key Version (Hex) = " .. string.format("%02x", keyVersion))
   log.print(log.DEBUG, "SCP Major Version (Hex) = " .. string.format("%02x", scpMajorVersion))
@@ -919,18 +920,18 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
   -- set the selected scp mode	
   if  (scp_mode == _M.SCP_MODE.SCP_ANY) then
     if (scpMajorVersion == 1) then		
-      GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
     elseif (scpMajorVersion == 2) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
     elseif (scpMajorVersion == 3) then
       log.print(log.ERROR, "SCP03 is not supported");
     end
   else
     log.print(log.WARNING, "Overriding SCP version: card reports " .. scpMajorVersion .. " but user requested " .. scp_mode)		
     if (scp_mode >= 1 or scp_mode <= 2) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_01_05
     elseif (scp_mode > 2 or scp_mode <=  10) then
-      GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
+      _M.GP_SCP_MODE = _M.SCP_MODE.SCP_02_15
     else
       error("error: " .. scp_mode .. " not supported yet")
     end
@@ -960,26 +961,26 @@ function _M.init_update(key_set, host_challenge, apdu_mode, key_derivation_type,
   --deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
 
   if (scpMajorVersion == 1) then
-    GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
+    _M.GP_SESSION_KEYS = _M.deriveSessionKeysSCP01(diversified_derived_key, random_challenge, card_challenge)
   elseif (scpMajorVersion == 2) then
     --seq = Arrays.copyOfRange(update_response, 12, 14)
     seq = string.sub(update_response, 25, 28)
     --log.print(log.DEBUG, "seq " .. tostring(seq))
-    GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
+    _M.GP_SESSION_KEYS = _M.deriveSessionKeysSCP02(diversified_derived_key, seq, false)
   else
     error("Session key derivation for SCP03 not supported")
   end		
 
-  local my_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
+  local my_cryptogram = _M.compute_mac(_M.GP_SESSION_KEYS.KEY_ENC, bytes.concat(random_challenge, card_challenge), true)	
 
   if (card_cryptogram ~= tostring(my_cryptogram)) then
     error("Mac do not match!")
   end
 
-  GP_CARD_CHALLENGE = card_challenge
-  GP_HOST_CHALLENGE =  random_challenge	
-  GP_APDU_MODE = apdu_mode
-  GP_SCP_VERSION = scpMajorVersion
+  _M.GP_CARD_CHALLENGE = card_challenge
+  _M.GP_HOST_CHALLENGE =  random_challenge	
+  _M.GP_APDU_MODE = apdu_mode
+  _M.GP_SCP_VERSION = scpMajorVersion
 
   return sw, response
 end
@@ -987,14 +988,14 @@ end
 
 --do the external authenticate
 function _M.external_authenticate(cardobj)	
-  local host_cryptogram = _M.compute_mac(GP_SESSION_KEYS.KEY_ENC, bytes.concat(GP_CARD_CHALLENGE, GP_HOST_CHALLENGE), true)
-  local apdu = create_cmd_apdu(0x84, 0x82, tonumber(GP_APDU_MODE), 0x00, tostring(host_cryptogram))
+  local host_cryptogram = _M.compute_mac(_M.GP_SESSION_KEYS.KEY_ENC, bytes.concat(_M.GP_CARD_CHALLENGE, _M.GP_HOST_CHALLENGE), true)
+  local apdu = create_cmd_apdu(0x84, 0x82, tonumber(_M.GP_APDU_MODE), 0x00, tostring(host_cryptogram))
   local secure_apdu
 
-  C_MAC = bytes.new(8,"00 00 00 00 00 00 00 00")		
-  if (GP_SCP_VERSION == 2) then	
+  _M.C_MAC = bytes.new(8,"00 00 00 00 00 00 00 00")		
+  if (_M.GP_SCP_VERSION == 2) then	
     secure_apdu = generateMAC_SCP02(bytes.new(8, apdu));
-  elseif (GP_SCP_VERSION == 1) then
+  elseif (_M.GP_SCP_VERSION == 1) then
     log.print(log.ERROR, "SCP01 session key derivation not yet implemented")
     error("SCP01 session key derivation not yet implemented")
   else
@@ -1010,15 +1011,15 @@ function _M.put_keyset(new_key_set, cardobj)
   local isReplace = false
 
   --if not virgin card then replace the key
-  if (CARD_KEY_VERSION ~= 0x00 and CARD_KEY_VERSION ~= 255) then
+  if (_M.CARD_KEY_VERSION ~= 0x00 and _M.CARD_KEY_VERSION ~= 255) then
     isReplace = true
   end
 
   -- if replace then change P1 with the old key version/id
   local P1 = 0x00; 
   if isReplace == true then
-    log.print(log.DEBUG, "P1 = CARD_KEY_VERSION = " .. CARD_KEY_VERSION)
-    P1 = CARD_KEY_VERSION
+    log.print(log.DEBUG, "P1 = CARD_KEY_VERSION = " .. _M.CARD_KEY_VERSION)
+    P1 = _M.CARD_KEY_VERSION
   end
 
 --  -- OR with new key ID
@@ -1026,10 +1027,10 @@ function _M.put_keyset(new_key_set, cardobj)
 
   local encodedKeyData
 
-  if CARD_SCP_VERSION == 1 then
+  if _M.CARD_SCP_VERSION == 1 then
     log.print(log.ERROR, "SCP 01 is not yet implemented")
     error("SCP 01 is not yet implemented")
-  elseif CARD_SCP_VERSION == 2 then
+  elseif _M.CARD_SCP_VERSION == 2 then
     encodedKeyData = tostring(encodeNewKey(new_key_set, false))
   else
     error("Not yet implemented")
@@ -1042,21 +1043,21 @@ function _M.put_keyset(new_key_set, cardobj)
 
   log.print(log.DEBUG, "GP_APDU_MODE = " .. _M.GP_APDU_MODE)
 
-  if (GP_APDU_MODE == _M.APDU_MODE.CLR) then 
+  if (_M.GP_APDU_MODE == _M.APDU_MODE.CLR) then 
     apdu = create_cmd_apdu(0x80, 0xD8, P1, P2, encodedKeyData)
     sw, response = cardobj.send_auto(apdu)
     verify_sw(sw, 0x9000)
   else
---  log.print(log.DEBUG, "C_MAC " .. tostring(C_MAC))
---  log.print(log.DEBUG, "mac ses key " .. tostring(bytes.sub(GP_SESSION_KEYS["MAC"], 0,7)))
---  log.print(log.DEBUG, "mac ses key " .. tostring(bytes.sub(GP_SESSION_KEYS["MAC"], 0,15)))
+--  log.print(log.DEBUG, "C_MAC " .. tostring(_M.C_MAC))
+--  log.print(log.DEBUG, "mac ses key " .. tostring(bytes.sub(_M.GP_SESSION_KEYS["MAC"], 0,7)))
+--  log.print(log.DEBUG, "mac ses key " .. tostring(bytes.sub(_M.GP_SESSION_KEYS["MAC"], 0,15)))
 
     apdu = create_cmd_apdu(0x84, 0xD8, P1, P2, encodedKeyData)
 
     ---- Compute the MAC --
-    local des_key = bytes.new(8,bytes.sub(GP_SESSION_KEYS.KEY_MAC, 0,7))
+    local des_key = bytes.new(8,bytes.sub(_M.GP_SESSION_KEYS.KEY_MAC, 0,7))
     local SDES_ECB = crypto.create_context(crypto.ALG_DES_ECB, des_key)
-    C_MAC = crypto.encrypt(SDES_ECB, C_MAC)			
+    _M.C_MAC = crypto.encrypt(SDES_ECB, _M.C_MAC)			
 
     local secure_apdu = generateMAC_SCP02(bytes.new(8, apdu));
     sw, response = cardobj.send_auto(secure_apdu)
@@ -1085,13 +1086,13 @@ function _M.get_current_scp_version(update_response)
   local keyVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_KEY_VERSION = keyVersion;
+  _M.CARD_KEY_VERSION = keyVersion;
 
   --Get major SCP version from Key Information field in response
   local scpMajorVersion = tonumber(string.sub(update_response, offset+1, offset+2), 16)
   offset = offset+2
 
-  CARD_SCP_VERSION = scpMajorVersion
+  _M.CARD_SCP_VERSION = scpMajorVersion
 
   return scpMajorVersion
 
