@@ -29,7 +29,7 @@ log.open_logfile(".\\log\\GpReverseLog.log")
 --////////////////////////////////////////////////////////////////////
 --Put the required data here
 --////////////////////////////////////////////////////////////////////
-local input_file = ".\\examples\\gp_data\\card_bri_prod.txt"
+local input_file = ".\\examples\\gp_data\\card1.txt"
 
 --////////////////////////////////////////////////////////////////////
 --//MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN MAIN 
@@ -62,7 +62,7 @@ io.close(file_handle)
 -------------------------------------------------------------------------------
 -- Process the properties
 -------------------------------------------------------------------------------
-local hostChallenge = string.sub(property["InitUpdateCmd"], 11, 11+8*2)
+local hostChallenge = string.sub(property["InitUpdateCmd"], 11, -1+11+8*2)
 
 index = 1
 local diversificationData = string.sub(property["InitUpdateResp"], index, -1+index+10*2)
@@ -114,7 +114,9 @@ else
 end
 
 
-local cntx = bytes.new(8, sequence .. cardChallenge6Bytes .. hostChallenge)
+local cntx = bytes.new(8, hostChallenge .. sequence .. cardChallenge6Bytes)
+
+log.print(log.INFO, "cntx = " .. tostring(cntx))
 
 local host_cryptogram = gp.compute_mac(session_key.KEY_ENC, cntx, true)
 
@@ -123,7 +125,7 @@ local reference_host_cryptogram = string.sub(property["ExtAuthCmd"], 11, 11+8*2)
 log.print(log.INFO, "Computed host cryptogram = " .. tostring(host_cryptogram))
 
 -- if not match
-if (string.match(reference_host_cryptogram,tostring(host_cryptogram)) == nil) then
+if (string.match(cardCryptogram, tostring(host_cryptogram)) == nil) then
   log.print(log.INFO, "Reference host cryptogram = " .. reference_host_cryptogram)
 
   error("computed host cryptogram is not equal")
